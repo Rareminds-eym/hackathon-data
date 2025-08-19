@@ -63,14 +63,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
                 </div>
-                <input
-                  type="text"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm"
-                  value={loginUser}
-                  onChange={e => setLoginUser(e.target.value)}
-                  autoFocus
-                  required
-                />
+                  <input
+                    type="text"
+                    placeholder="Username"
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm"
+                    value={loginUser}
+                    onChange={e => setLoginUser(e.target.value)}
+                    autoFocus
+                    required
+                  />
               </div>
             </div>
 
@@ -81,13 +82,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm"
-                  value={loginPass}
-                  onChange={e => setLoginPass(e.target.value)}
-                  required
-                />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm"
+                    value={loginPass}
+                    onChange={e => setLoginPass(e.target.value)}
+                    required
+                  />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
