@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Database, AlertCircle, Wifi, WifiOff } from 'lucide-react';
-import ProjectForm, { ProjectConfig } from './components/ProjectForm';
-import ProjectList from './components/ProjectList';
-import ExportSection from './components/ExportSection';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { apiService, Project } from './services/api';
-// App component must be a function
+import LoginScreen from './components/LoginScreen';
+import DashboardScreen from './components/DashboardScreen';
+import InstructionsScreen from './components/InstructionsScreen';
+import NotFoundScreen from './components/NotFoundScreen';
+import { useAuth } from './context/AuthContext';
+
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-
-  // Login state
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginUser, setLoginUser] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [loginError, setLoginError] = useState("");
+  const { isLoggedIn, login, logout } = useAuth();
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -42,13 +39,12 @@ function App() {
     }
   };
 
-  const handleAddProject = async (projectConfig: ProjectConfig) => {
+  const handleAddProject = async (projectConfig: any) => {
     setLoading(true);
     setError('');
-
     try {
       const result = await apiService.addProject(projectConfig);
-      setProjects(prev => [...prev, result.project]);
+      setProjects((prev) => [...prev, result.project]);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to add project');
     } finally {
@@ -60,7 +56,7 @@ function App() {
     setLoading(true);
     try {
       await apiService.removeProject(id);
-      setProjects(prev => prev.filter(p => p.id !== id));
+      setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to remove project');
     } finally {
@@ -72,152 +68,39 @@ function App() {
     await apiService.exportTables();
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <form
-          className="bg-white p-8 rounded shadow-md w-full max-w-sm"
-          onSubmit={e => {
-            e.preventDefault();
-            if (loginUser === 'admin' && loginPass === 'rmfg@2025') {
-              setIsLoggedIn(true);
-              setLoginError("");
-            } else {
-              setLoginError("Invalid username or password");
-            }
-          }}
-        >
-          <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-          {loginError && <div className="mb-4 text-red-500 text-center">{loginError}</div>}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">Username</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={loginUser}
-              onChange={e => setLoginUser(e.target.value)}
-              autoFocus
-              required
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={loginPass}
-              onChange={e => setLoginPass(e.target.value)}
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors font-semibold"
-          >
-            Login
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Database className="text-blue-600" size={32} />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Supabase CSV Exporter</h1>
-                <p className="text-sm text-gray-600">Export tables from multiple Supabase projects</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {connectionStatus === 'connected' ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <Wifi size={16} />
-                  <span className="text-sm font-medium">Connected</span>
-                </div>
-              ) : connectionStatus === 'disconnected' ? (
-                <div className="flex items-center gap-2 text-red-600">
-                  <WifiOff size={16} />
-                  <span className="text-sm font-medium">Server Offline</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
-                  <span className="text-sm font-medium">Checking...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Connection Error */}
-        {connectionStatus === 'disconnected' && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
-            <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-            <div>
-              <p className="text-red-800 font-medium">Server Connection Failed</p>
-              <p className="text-red-700 text-sm">
-                Make sure the backend server is running on port 3001. Run: <code className="bg-red-100 px-1 rounded">cd server && npm start</code>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
-            <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-            <span className="text-red-800">{error}</span>
-            <button
-              onClick={() => setError('')}
-              className="ml-auto text-red-600 hover:text-red-800"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Project Form and List */}
-          <div className="lg:col-span-2 space-y-8">
-            <ProjectForm onAddProject={handleAddProject} loading={loading} />
-            <ProjectList 
-              projects={projects} 
-              onRemoveProject={handleRemoveProject}
-              loading={loading}
-            />
-          </div>
-
-          {/* Right Column - Export Section */}
-          <div className="lg:col-span-1">
-            <ExportSection
-              projectCount={projects.length}
-              onExport={handleExport}
-            />
-          </div>
-        </div>
-
-        {/* Instructions */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="font-semibold text-blue-900 mb-3">How to Use</h3>
-          <ol className="list-decimal list-inside space-y-2 text-blue-800 text-sm">
-            <li>Add your Supabase project credentials using the form above</li>
-            <li>The system will validate the connection and check for required tables</li>
-            <li>Required tables: <code>individual_attempts</code>, <code>attempt_details</code>, <code>teams</code></li>
-            <li>Click "Export All Tables as ZIP" to download CSV files from all projects</li>
-            <li>Files will be named as: <code>projectname_tablename.csv</code></li>
-          </ol>
-        </div>
-      </main>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={<LoginScreen onLogin={login} />}
+        />
+        <Route
+          path="/dashboard"
+          element={
+            isLoggedIn ? (
+              <DashboardScreen
+                projects={projects}
+                loading={loading}
+                error={error}
+                connectionStatus={connectionStatus}
+                handleAddProject={handleAddProject}
+                handleRemoveProject={handleRemoveProject}
+                handleExport={handleExport}
+                setError={setError}
+                logout={logout}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="/" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />} />
+        <Route path="/instructions" element={<InstructionsScreen />} />
+        <Route path="*" element={<NotFoundScreen />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
+
 export default App;
