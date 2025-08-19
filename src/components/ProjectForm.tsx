@@ -10,7 +10,7 @@ export interface ProjectConfig {
   name: string;
   host: string;
   database: string;
-  user: string;
+  username: string;
   password: string;
   port: number;
 }
@@ -20,7 +20,7 @@ export default function ProjectForm({ onAddProject, loading }: ProjectFormProps)
     name: '',
     host: '',
     database: '',
-    user: '',
+    username: '',
     password: '',
     port: 5432
   });
@@ -33,7 +33,7 @@ export default function ProjectForm({ onAddProject, loading }: ProjectFormProps)
     if (!formData.name.trim()) newErrors.name = 'Project name is required';
     if (!formData.host.trim()) newErrors.host = 'Host is required';
     if (!formData.database.trim()) newErrors.database = 'Database name is required';
-    if (!formData.user.trim()) newErrors.user = 'Username is required';
+  if (!formData.username.trim()) newErrors.username = 'Username is required';
     if (!formData.password.trim()) newErrors.password = 'Password is required';
     if (!formData.port || formData.port < 1 || formData.port > 65535) {
       newErrors.port = 'Valid port number is required (1-65535)';
@@ -55,7 +55,7 @@ export default function ProjectForm({ onAddProject, loading }: ProjectFormProps)
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-  };
+  }
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -137,18 +137,18 @@ export default function ProjectForm({ onAddProject, loading }: ProjectFormProps)
           </label>
           <input
             type="text"
-            value={formData.user}
-            onChange={(e) => handleInputChange('user', e.target.value)}
+            value={formData.username}
+            onChange={(e) => handleInputChange('username', e.target.value)}
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-              errors.user ? 'border-red-500' : 'border-gray-300'
+              errors.username ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="postgres"
             disabled={loading}
           />
-          {errors.user && (
+          {errors.username && (
             <div className="flex items-center gap-1 mt-1 text-red-600 text-sm">
               <AlertCircle size={14} />
-              {errors.user}
+              {errors.username}
             </div>
           )}
         </div>

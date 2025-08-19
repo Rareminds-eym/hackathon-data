@@ -11,14 +11,14 @@ export interface ProjectConfig {
   name: string;
   host: string;
   database: string;
-  user: string;
+  username: string;
   password: string;
   port: number;
 }
 
 class ApiService {
   async addProject(project: ProjectConfig): Promise<{ message: string; project: Project }> {
-    const response = await fetch(`${API_BASE_URL}/add_project`, {
+  const response = await fetch(`${API_BASE_URL}/projects`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -113,7 +113,8 @@ app.post('/api/projects', async (req, res) => {
     } catch (dbError) {
       console.error('Database connection error:', dbError);
       res.status(400).json({ 
-        error: 'Failed to connect to database. Please check your credentials.' 
+        error: 'Failed to connect to database. Please check your credentials.',
+        details: dbError.message || dbError
       });
     }
 
