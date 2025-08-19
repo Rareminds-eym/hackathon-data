@@ -1,0 +1,18 @@
+{
+  "name": "supabase-csv-exporter-server",
+  "version": "1.0.0",
+  "description": "Backend server for Supabase CSV exporter",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.3",
+    "csv-writer": "^1.6.0",
+    "archiver": "^7.0.1",
+    "uuid": "^9.0.1"
+  }
+}
