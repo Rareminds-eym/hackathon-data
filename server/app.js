@@ -55,17 +55,17 @@ let projects = [
 const REQUIRED_TABLES = ['individual_attempts', 'attempt_details', 'teams'];
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
 // Get all projects
-app.get('/api/projects', (req, res) => {
+app.get('/projects', (req, res) => {
   res.json(projects);
 });
 
 // Add a new project
-app.post('/api/projects', async (req, res) => {
+app.post('/projects', async (req, res) => {
   try {
     const { name, host, database, username, password, port } = req.body;
 
@@ -159,7 +159,7 @@ app.post('/api/projects', async (req, res) => {
 });
 
 // Remove a project
-app.delete('/api/projects/:id', (req, res) => {
+app.delete('/projects/:id', (req, res) => {
   const { id } = req.params;
   const initialLength = projects.length;
   projects = projects.filter(p => p.id !== id);
@@ -172,7 +172,7 @@ app.delete('/api/projects/:id', (req, res) => {
 });
 
 // Export tables as ZIP
-app.post('/api/export', async (req, res) => {
+app.post('/export', async (req, res) => {
   try {
     if (projects.length === 0) {
       return res.status(400).json({ error: 'No projects configured' });
