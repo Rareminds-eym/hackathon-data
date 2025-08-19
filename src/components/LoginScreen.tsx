@@ -7,8 +7,8 @@ interface LoginScreenProps {
 
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-  const [loginUser, setLoginUser] = useState("");
-  const [loginPass, setLoginPass] = useState("@2025");
+  const [loginUser, setLoginUser] = useState("admin");
+  const [loginPass, setLoginPass] = useState("rmfg@2025");
   const [loginError, setLoginError] = useState("");
   const navigate = useNavigate();
 
