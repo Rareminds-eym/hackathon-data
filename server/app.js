@@ -15,7 +15,41 @@ app.use(cors());
 app.use(express.json());
 
 // In-memory storage for projects (in production, use a database)
-let projects = [];
+let projects = [
+  {
+    id: 'default-gmp',
+    name: 'GMP',
+    host: 'aws-0-ap-south-1.pooler.supabase.com',
+    database: 'postgres',
+    username: 'postgres.cjwlorubdahdvvaxgnzx',
+    password: '2ItrKs36snxHBjeE',
+    port: 6543,
+    createdAt: new Date().toISOString(),
+    pool_mode: 'transaction'
+  },
+  {
+    id: 'default-fsqm',
+    name: 'FSQM',
+    host: 'aws-0-ap-south-1.pooler.supabase.com',
+    database: 'postgres',
+    username: 'postgres.heatlbebbupsaqqwwkrq',
+    password: 'soyy3sOaV6XbYKwc',
+    port: 6543,
+    createdAt: new Date().toISOString(),
+    pool_mode: 'transaction'
+  },
+  {
+    id: 'default-mc',
+    name: 'MC',
+    host: 'aws-0-ap-south-1.pooler.supabase.com',
+    database: 'postgres',
+    username: 'postgres.ilwwcxmvprihqcjvlpez',
+    password: 'TyMP4aUevlyguq5q',
+    port: 6543,
+    createdAt: new Date().toISOString(),
+    pool_mode: 'transaction'
+  }
+];
 
 // Required tables to export
 const REQUIRED_TABLES = ['individual_attempts', 'attempt_details', 'teams'];
@@ -169,7 +203,7 @@ app.post('/api/export', async (req, res) => {
         for (const tableName of REQUIRED_TABLES) {
           try {
             const result = await client.query(`SELECT * FROM ${tableName}`);
-            
+
             if (result.rows.length > 0) {
               const fileName = `${project.name}_${tableName}.csv`;
               const filePath = path.join(tempDir, fileName);
@@ -180,6 +214,20 @@ app.post('/api/export', async (req, res) => {
                 title: key
               }));
 
+              // Stringify object/array/JSON fields for CSV output
+              const rows = result.rows.map(row => {
+                const newRow = {};
+                for (const key of Object.keys(row)) {
+                  const value = row[key];
+                  if (value && typeof value === 'object') {
+                    newRow[key] = JSON.stringify(value);
+                  } else {
+                    newRow[key] = value;
+                  }
+                }
+                return newRow;
+              });
+
               // Create CSV writer
               const csvWriter = createCsvWriter({
                 path: filePath,
@@ -187,8 +235,8 @@ app.post('/api/export', async (req, res) => {
               });
 
               // Write data to CSV
-              await csvWriter.writeRecords(result.rows);
-              
+              await csvWriter.writeRecords(rows);
+
               exportResults.push({
                 project: project.name,
                 table: tableName,

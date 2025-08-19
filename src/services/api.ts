@@ -58,13 +58,20 @@ class ApiService {
   }
 
   async exportTables(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/export_tables`, {
+    const response = await fetch(`${API_BASE_URL}/export`, {
       method: 'POST',
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to export tables');
+      // Try to parse error as JSON, otherwise fallback to text
+      let errorMsg = 'Failed to export tables';
+      try {
+        const error = await response.json();
+        errorMsg = error.error || errorMsg;
+      } catch {
+        errorMsg = await response.text();
+      }
+      throw new Error(errorMsg);
     }
 
     // Handle file download
