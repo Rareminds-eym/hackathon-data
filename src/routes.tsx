@@ -1,5 +1,5 @@
 import { RouteObject } from 'react-router-dom';
-import LoginScreen from './components/LoginScreen';
+import LoginScreen from './pages/LoginScreen';
 import NotFoundScreen from './components/NotFoundScreen';
 
 const routes: RouteObject[] = [

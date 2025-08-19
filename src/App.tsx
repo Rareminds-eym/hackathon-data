@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { apiService, Project } from './services/api';
-import LoginScreen from './components/LoginScreen';
-import DashboardScreen from './components/DashboardScreen';
+import LoginScreen from './pages/LoginScreen';
+import DashboardScreen from './pages/DashboardScreen';
 import InstructionsScreen from './components/InstructionsScreen';
 import NotFoundScreen from './components/NotFoundScreen';
 import { useAuth } from './context/AuthContext';

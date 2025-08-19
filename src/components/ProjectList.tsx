@@ -15,6 +15,16 @@ interface ProjectListProps {
 }
 
 export default function ProjectList({ projects, onRemoveProject, loading }: ProjectListProps) {
+  const [confirmId, setConfirmId] = React.useState<string | null>(null);
+  const handleDelete = (id: string) => {
+    setConfirmId(id);
+  };
+  const confirmDelete = () => {
+    if (confirmId) onRemoveProject(confirmId);
+    setConfirmId(null);
+  };
+  const cancelDelete = () => setConfirmId(null);
+
   if (projects.length === 0) {
     return (
       <div className="relative">
@@ -102,9 +112,8 @@ export default function ProjectList({ projects, onRemoveProject, loading }: Proj
                   </div>
                 </div>
               </div>
-              
               <button
-                onClick={() => onRemoveProject(project.id)}
+                onClick={() => handleDelete(project.id)}
                 disabled={loading}
                 className="p-3 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group-hover:scale-110 border border-transparent hover:border-red-500/20 backdrop-blur-sm"
                 title="Remove project"
@@ -114,6 +123,31 @@ export default function ProjectList({ projects, onRemoveProject, loading }: Proj
             </div>
           ))}
         </div>
+
+        {/* Confirmation Dialog */}
+        {confirmId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-xs w-full border border-gray-200 dark:border-gray-700 flex flex-col items-center">
+              <AlertCircle className="text-red-500 mb-3" size={36} />
+              <h4 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Delete Project?</h4>
+              <p className="text-gray-700 dark:text-gray-300 text-sm mb-6 text-center">Are you sure you want to remove this project? This action cannot be undone.</p>
+              <div className="flex gap-4 w-full">
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-semibold transition-all dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer Info */}
         <div className="mt-8 p-4 bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 rounded-xl backdrop-blur-sm text-center">
