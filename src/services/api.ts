@@ -1,7 +1,7 @@
-const API_BASE_URL = 'https://datadump.rareminds.in/api'
-  // process.env.NODE_ENV === 'production'
-  //   ? 'https://datadump.rareminds.in/api'
-  //   : 'http://localhost:3001';
+const API_BASE_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://datadump.rareminds.in/api'
+    : 'http://localhost:3001';
 
 export interface Project {
   id: string;
