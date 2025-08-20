@@ -61,4 +61,8 @@ jobs:
             # Install server dependencies and restart (adjust as needed)
             cd /home/ubuntu/h-data-server
             npm install --omit=dev
-            pm2 reload datadump || pm2 start app.js --name datadump
+            if pm2 describe datadump > /dev/null; then
+              pm2 restart datadump;
+            else
+              pm2 start app.js --name datadump;
+            fi
