@@ -1,9 +1,10 @@
 import React from 'react';
-import { Database, AlertCircle, Wifi, WifiOff, LogOut, Activity, Zap, Menu, X } from 'lucide-react';
+import { Database, AlertCircle, Wifi, WifiOff, LogOut, Activity, Zap, Menu, X, Users } from 'lucide-react';
 import ProjectForm, { ProjectConfig } from '../components/ProjectForm';
 import ProjectsTab from '../components/ProjectsTab';
 import ExportTab from '../components/ExportTab';
 import InstructionsTab from '../components/InstructionsTab';
+import ViewTeamMembersTab from '../components/ViewTeamMembersTab';
 
 interface DashboardScreenProps {
   projects: any[];
@@ -28,7 +29,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   setError,
   logout,
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'instructions'>('export');
+  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'instructions' | 'team-members'>('export');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   return (
@@ -82,9 +83,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {/* Mobile Navigation Tabs */}
       <div className="md:hidden backdrop-blur-xl bg-white/5 border-b border-white/10 sticky top-16 z-20">
-        <div className="flex">
+        <div className="grid grid-cols-4 gap-0">
           <button
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
               activeTab === 'export' ? 'bg-white/10 text-purple-400 border-b-2 border-purple-400' : 'text-white hover:bg-white/5'
             }`}
             onClick={() => setActiveTab('export')}
@@ -93,7 +94,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <span>Export</span>
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
               activeTab === 'projects' ? 'bg-white/10 text-blue-400 border-b-2 border-blue-400' : 'text-white hover:bg-white/5'
             }`}
             onClick={() => setActiveTab('projects')}
@@ -102,7 +103,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <span>Projects</span>
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
+              activeTab === 'team-members' ? 'bg-white/10 text-green-400 border-b-2 border-green-400' : 'text-white hover:bg-white/5'
+            }`}
+            onClick={() => setActiveTab('team-members')}
+          >
+            <Users size={16} />
+            <span>Teams</span>
+          </button>
+          <button
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
               activeTab === 'instructions' ? 'bg-white/10 text-pink-400 border-b-2 border-pink-400' : 'text-white hover:bg-white/5'
             }`}
             onClick={() => setActiveTab('instructions')}
@@ -166,6 +176,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               >
                 <Activity size={18} />
                 <span>Projects</span>
+              </button>
+              <button
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
+                  activeTab === 'team-members' ? 'bg-white/10 text-green-400' : 'text-white hover:bg-white/10'
+                }`}
+                onClick={() => setActiveTab('team-members')}
+              >
+                <Users size={18} />
+                <span>Team Members</span>
               </button>
               <button
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
@@ -235,6 +254,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 onExport={handleExport}
               />
             )}
+            {activeTab === 'team-members' && (
+              <ViewTeamMembersTab
+                projectCount={projects.length}
+              />
+            )}
             {activeTab === 'instructions' && <InstructionsTab />}
           </main>
         </div>
@@ -254,6 +278,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <ExportTab
             projectCount={projects.length}
             onExport={handleExport}
+          />
+        )}
+        {activeTab === 'team-members' && (
+          <ViewTeamMembersTab
+            projectCount={projects.length}
           />
         )}
         {activeTab === 'instructions' && <InstructionsTab />}

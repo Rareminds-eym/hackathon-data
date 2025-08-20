@@ -54,6 +54,35 @@ let projects = [
 // Required tables to export
 const REQUIRED_TABLES = ['individual_attempts', 'attempt_details', 'teams'];
 
+// Utility function to extract team_code from email
+function extractTeamCodeFromEmail(email) {
+  if (!email) return '';
+  
+  // Extract the part before @ symbol
+  const beforeAt = email.split('@')[0];
+  
+  // Look for common patterns that might represent team codes
+  // Example patterns: team123, t123, team-abc, abc_team, etc.
+  const teamCodePatterns = [
+    /team[_-]?([a-zA-Z0-9]+)/i,  // team123, team_abc, team-xyz
+    /([a-zA-Z0-9]+)[_-]?team/i,  // abc_team, xyz-team
+    /^t([0-9]+)$/i,              // t123, t456
+    /^([a-zA-Z]{2,6}[0-9]{1,4})$/i, // abc123, xyz1, abcd12
+    /^([a-zA-Z0-9]{3,8})$/i      // general alphanumeric codes
+  ];
+  
+  // Try each pattern
+  for (const pattern of teamCodePatterns) {
+    const match = beforeAt.match(pattern);
+    if (match) {
+      return match[1] || match[0]; // Return captured group or full match
+    }
+  }
+  
+  // If no pattern matches, return the part before @ as potential team code
+  return beforeAt;
+}
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -326,6 +355,284 @@ app.post('/export', async (req, res) => {
 
   } catch (error) {
     console.error('Export error:', error);
+    res.status(500).json({ error: 'Export failed: ' + error.message });
+  }
+});
+
+// Get team members from all projects with pagination and filtering
+app.get('/team-members', async (req, res) => {
+  try {
+    if (projects.length === 0) {
+      return res.json({ 
+        data: [], 
+        total: 0, 
+        page: 1, 
+        limit: 12, 
+        totalPages: 0 
+      });
+    }
+
+    // Parse query parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 12), 100); // Max 100 per page
+    const search = req.query.search ? req.query.search.toLowerCase().trim() : '';
+    const project = req.query.project || '';
+    const sortBy = req.query.sortBy || 'created_at';
+    const sortOrder = req.query.sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+    const allTeamMembers = [];
+
+    // Fetch team members from each project
+    for (const projectConfig of projects) {
+      // Skip projects that don't match the filter
+      if (project && project !== 'all' && projectConfig.name !== project) {
+        continue;
+      }
+
+      const pool = new Pool({
+        host: projectConfig.host,
+        database: projectConfig.database,
+        user: projectConfig.username,
+        password: projectConfig.password,
+        port: projectConfig.port,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+      });
+
+      try {
+        const client = await pool.connect();
+        
+        // Check if teams table exists
+        const tableExists = await client.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'teams'
+          )`
+        );
+
+        if (tableExists.rows[0].exists) {
+          // Build the ORDER BY clause based on sortBy parameter
+          let orderByClause = '';
+          const validSortColumns = ['name', 'email', 'role', 'created_at', 'updated_at'];
+          if (validSortColumns.includes(sortBy)) {
+            orderByClause = `ORDER BY ${sortBy} ${sortOrder}`;
+          } else if (sortBy === 'team_code') {
+            // For team_code, we'll sort after processing since it's computed
+            orderByClause = 'ORDER BY created_at DESC';
+          } else {
+            orderByClause = 'ORDER BY created_at DESC';
+          }
+
+          const result = await client.query(`SELECT * FROM teams ${orderByClause}`);
+          
+          // Add project name and extract team_code to each team member
+          const projectMembers = result.rows.map(member => {
+            // Use join_code as the main team code, fallback to team_code, then extract from email
+            const extractedTeamCode = member.join_code || member.team_code || (member.email ? extractTeamCodeFromEmail(member.email) : '');
+            return {
+              ...member,
+              project_name: projectConfig.name,
+              team_code: extractedTeamCode,
+              team_name: member.team_name || member.teamname || ''
+            };
+          });
+          
+          allTeamMembers.push(...projectMembers);
+        }
+
+        client.release();
+        await pool.end();
+
+      } catch (projectError) {
+        console.error(`Error fetching team members from ${projectConfig.name}:`, projectError);
+        // Continue with other projects even if one fails
+      }
+    }
+
+    // Apply search filtering
+    let filteredMembers = allTeamMembers;
+    if (search) {
+      filteredMembers = allTeamMembers.filter(member => {
+        const searchableFields = [
+          member.name || '',
+          member.email || '',
+          member.team_code || '',
+          member.project_name || '',
+          member.role || '',
+          member.join_code || '' // Allow searching by join_code
+        ];
+        return searchableFields.some(field => 
+          field.toLowerCase().includes(search)
+        );
+      });
+    }
+
+    // Apply sorting if it's team_code (since it's computed after DB query)
+    if (sortBy === 'team_code') {
+      filteredMembers.sort((a, b) => {
+        const aValue = (a.team_code || '').toLowerCase();
+        const bValue = (b.team_code || '').toLowerCase();
+        const comparison = aValue.localeCompare(bValue);
+        return sortOrder === 'ASC' ? comparison : -comparison;
+      });
+    } else if (sortBy === 'project') {
+      filteredMembers.sort((a, b) => {
+        const aValue = (a.project_name || '').toLowerCase();
+        const bValue = (b.project_name || '').toLowerCase();
+        const comparison = aValue.localeCompare(bValue);
+        return sortOrder === 'ASC' ? comparison : -comparison;
+      });
+    }
+
+    // Calculate pagination
+    const total = filteredMembers.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedMembers = filteredMembers.slice(offset, offset + limit);
+
+    res.json({
+      data: paginatedMembers,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    });
+
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    res.status(500).json({ error: 'Failed to fetch team members' });
+  }
+});
+
+// Export team members as CSV
+app.post('/export-team-members', async (req, res) => {
+  try {
+    if (projects.length === 0) {
+      return res.status(400).json({ error: 'No projects configured' });
+    }
+
+    const allTeamMembers = [];
+
+    // Fetch team members from each project
+    for (const project of projects) {
+      const pool = new Pool({
+        host: project.host,
+        database: project.database,
+        user: project.username,
+        password: project.password,
+        port: project.port,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+      });
+
+      try {
+        const client = await pool.connect();
+        
+        // Check if teams table exists
+        const tableExists = await client.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'teams'
+          )`
+        );
+
+        if (tableExists.rows[0].exists) {
+          const result = await client.query('SELECT * FROM teams ORDER BY created_at DESC');
+          
+          // Add project name and extract team_code to each team member
+          const projectMembers = result.rows.map(member => {
+            const extractedTeamCode = member.team_code || (member.email ? extractTeamCodeFromEmail(member.email) : '');
+            return {
+              ...member,
+              project_name: project.name,
+              team_code: extractedTeamCode
+            };
+          });
+          
+          allTeamMembers.push(...projectMembers);
+        }
+
+        client.release();
+        await pool.end();
+
+      } catch (projectError) {
+        console.error(`Error fetching team members from ${project.name}:`, projectError);
+      }
+    }
+
+    if (allTeamMembers.length === 0) {
+      return res.status(404).json({ error: 'No team members found' });
+    }
+
+    // Create temporary directory for CSV file
+    const tempDir = path.join(__dirname, 'temp', uuidv4());
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const fileName = `team_members_${new Date().toISOString().split('T')[0]}.csv`;
+    const filePath = path.join(tempDir, fileName);
+
+    // Get all possible column names from all team members
+    const allColumns = new Set(['project_name']);
+    allTeamMembers.forEach(member => {
+      Object.keys(member).forEach(key => {
+        if (key !== 'project_name') {
+          allColumns.add(key);
+        }
+      });
+    });
+
+    const columns = Array.from(allColumns).map(key => ({
+      id: key,
+      title: key
+    }));
+
+    // Stringify object/array/JSON fields for CSV output
+    const rows = allTeamMembers.map(member => {
+      const newRow = {};
+      allColumns.forEach(key => {
+        const value = member[key];
+        if (value && typeof value === 'object') {
+          newRow[key] = JSON.stringify(value);
+        } else {
+          newRow[key] = value || '';
+        }
+      });
+      return newRow;
+    });
+
+    // Create CSV writer
+    const csvWriter = createCsvWriter({
+      path: filePath,
+      header: columns
+    });
+
+    // Write data to CSV
+    await csvWriter.writeRecords(rows);
+
+    // Send CSV file
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    
+    const csvStream = fs.createReadStream(filePath);
+    csvStream.pipe(res);
+
+    // Clean up temp directory after sending
+    csvStream.on('end', () => {
+      setTimeout(() => {
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.error('Error cleaning up temp directory:', cleanupError);
+        }
+      }, 1000);
+    });
+
+  } catch (error) {
+    console.error('Team members export error:', error);
     res.status(500).json({ error: 'Export failed: ' + error.message });
   }
 });

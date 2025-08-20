@@ -1,3 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom dropdown styles for better option visibility */
+.custom-select {
+  background-image: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+.custom-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.custom-select option {
+  background-color: #374151 !important;
+  color: white !important;
+  padding: 8px 12px;
+}
+
+.custom-select option:hover {
+  background-color: #4B5563 !important;
+}
+
+.custom-select option:checked {
+  background-color: #3B82F6 !important;
+}
