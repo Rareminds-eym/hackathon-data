@@ -1,4 +1,4 @@
-const API_BASE_URL =
+const API_BASE_URL = 'https://datadump.rareminds.in/api'
   process.env.NODE_ENV === 'production'
     ? 'https://datadump.rareminds.in/api'
     : 'http://localhost:3001';
