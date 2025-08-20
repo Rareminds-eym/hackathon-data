@@ -160,11 +160,16 @@ const ViewTeamMembersTab: React.FC<ViewTeamMembersTabProps> = ({ projectCount })
 
   const handleExportTeamMembers = async () => {
     try {
-      await apiService.exportTeamMembers();
+      await apiService.exportTeamMembers({
+        search: debouncedSearch || undefined,
+        project: selectedProject === 'all' ? undefined : selectedProject,
+        sortBy,
+        sortOrder,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to export team members');
     }
-  };
+  }
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';

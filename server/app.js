@@ -514,23 +514,26 @@ app.post('/export-team-members', async (req, res) => {
       return res.status(400).json({ error: 'No projects configured' });
     }
 
-    const allTeamMembers = [];
+    // Get filters from request body
+    const { search, project, sortBy = 'created_at', sortOrder = 'desc' } = req.body || {};
+
+    let allTeamMembers = [];
 
     // Fetch team members from each project
-    for (const project of projects) {
+    for (const proj of projects) {
+      if (project && proj.name !== project) continue;
       const pool = new Pool({
-        host: project.host,
-        database: project.database,
-        user: project.username,
-        password: project.password,
-        port: project.port,
+        host: proj.host,
+        database: proj.database,
+        user: proj.username,
+        password: proj.password,
+        port: proj.port,
         ssl: { rejectUnauthorized: false },
         connectionTimeoutMillis: 10000,
       });
 
       try {
         const client = await pool.connect();
-        
         // Check if teams table exists
         const tableExists = await client.query(
           `SELECT EXISTS (
@@ -539,30 +542,49 @@ app.post('/export-team-members', async (req, res) => {
             AND table_name = 'teams'
           )`
         );
-
         if (tableExists.rows[0].exists) {
-          const result = await client.query('SELECT * FROM teams ORDER BY created_at DESC');
-          
+          const result = await client.query('SELECT * FROM teams');
           // Add project name and extract team_code to each team member
           const projectMembers = result.rows.map(member => {
             const extractedTeamCode = member.team_code || (member.email ? extractTeamCodeFromEmail(member.email) : '');
             return {
               ...member,
-              project_name: project.name,
+              project_name: proj.name,
               team_code: extractedTeamCode
             };
           });
-          
           allTeamMembers.push(...projectMembers);
         }
-
         client.release();
         await pool.end();
-
       } catch (projectError) {
-        console.error(`Error fetching team members from ${project.name}:`, projectError);
+        console.error(`Error fetching team members from ${proj.name}:`, projectError);
       }
     }
+
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      allTeamMembers = allTeamMembers.filter(member => {
+        return (
+          (member.name && member.name.toLowerCase().includes(searchLower)) ||
+          (member.email && member.email.toLowerCase().includes(searchLower)) ||
+          (member.team_code && member.team_code.toLowerCase().includes(searchLower)) ||
+          (member.team_name && member.team_name.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+
+    // Apply sorting
+    allTeamMembers.sort((a, b) => {
+      let aValue = a[sortBy] || '';
+      let bValue = b[sortBy] || '';
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
 
     if (allTeamMembers.length === 0) {
       return res.status(404).json({ error: 'No team members found' });

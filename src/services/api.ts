@@ -190,9 +190,11 @@ class ApiService {
     return data;
   }
 
-  async exportTeamMembers(): Promise<void> {
+  async exportTeamMembers(params: TeamMembersQueryParams = {}): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/export-team-members`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
     });
 
     if (!response.ok) {
