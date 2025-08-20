@@ -54,6 +54,7 @@ jobs:
             # Deploy server
             mkdir -p /home/ubuntu/server-temp
             tar -xzf /home/ubuntu/server.tar.gz -C /home/ubuntu/server-temp
+            sudo mkdir -p /var/www/h-data-server
             sudo rm -rf /var/www/h-data-server/*
             sudo mv /home/ubuntu/server-temp/* /var/www/h-data-server/
             rm -rf /home/ubuntu/server.tar.gz /home/ubuntu/server-temp
