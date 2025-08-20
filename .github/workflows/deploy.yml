@@ -60,5 +60,5 @@ jobs:
             rm -rf /home/ubuntu/server.tar.gz /home/ubuntu/server-temp
             # Install server dependencies and restart (adjust as needed)
             cd /var/www/h-data-server
-            npm install --omit=dev
+            sudo npm install --omit=dev
             pm2 restart app || pm2 start app.js --name app
