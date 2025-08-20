@@ -166,7 +166,7 @@ export default function ExportSection({ projectCount, onExport }: ExportSectionP
             Files are automatically organized by project name.
           </p>
         </div>
-      </div>
+      </div> 
     </div>
   );
 }
