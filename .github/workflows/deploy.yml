@@ -28,7 +28,7 @@ jobs:
         run: tar -czf build.tar.gz -C dist .
 
       - name: Archive server folder into tar
-        run: tar -czf server.tar.gz -C server . --include=package.json --include=package-lock.json
+        run: tar -czf server.tar.gz -C server .
 
       - name: Upload tar to EC2
         uses: appleboy/scp-action@master
