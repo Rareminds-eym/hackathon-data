@@ -15,7 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginUser === 'admin' && loginPass === 'rmfg@2025') {
+  if (loginUser.toLowerCase() === 'admin' && loginPass === 'rmfg@2025') {
       setLoginError("");
       onLogin();
       navigate("/dashboard");
