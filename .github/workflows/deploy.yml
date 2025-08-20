@@ -54,11 +54,11 @@ jobs:
             # Deploy server
             mkdir -p /home/ubuntu/server-temp
             tar -xzf /home/ubuntu/server.tar.gz -C /home/ubuntu/server-temp
-            sudo mkdir -p /var/www/h-data-server
-            sudo rm -rf /var/www/h-data-server/*
-            sudo mv /home/ubuntu/server-temp/* /var/www/h-data-server/
+            mkdir -p /home/ubuntu/h-data-server
+            rm -rf /home/ubuntu/h-data-server/*
+            mv /home/ubuntu/server-temp/* /home/ubuntu/h-data-server/
             rm -rf /home/ubuntu/server.tar.gz /home/ubuntu/server-temp
             # Install server dependencies and restart (adjust as needed)
-            cd /var/www/h-data-server
-            sudo npm install --omit=dev
+            cd /home/ubuntu/h-data-server
+            npm install --omit=dev
             pm2 reload datadump || pm2 start app.js --name datadump
