@@ -112,7 +112,7 @@ export default function ProjectList({ projects, onRemoveProject, loading }: Proj
               </div>
               <button
                 onClick={() => handleDelete(project.id)}
-                disabled={loading}
+                disabled={true || loading}
                 className="p-2 md:p-3 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg md:rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group-hover:scale-110 border border-transparent hover:border-red-500/20 backdrop-blur-sm flex-shrink-0"
                 title="Remove project"
               >

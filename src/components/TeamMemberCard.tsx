@@ -23,7 +23,7 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({ member, formatDate }) =
       <div className="flex-1 min-w-0 space-y-2">
         <div>
           <h3 className="text-white font-semibold text-lg truncate group-hover:text-blue-300 transition-colors">
-            {member.name}
+            {member.name || member.full_name || member.email}
           </h3>
           
           {member.team_name && (
