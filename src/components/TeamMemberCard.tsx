@@ -22,10 +22,14 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({ member, formatDate }) =
       
       <div className="flex-1 min-w-0 space-y-2">
         <div>
-          <h3 className="text-white font-semibold text-lg truncate group-hover:text-blue-300 transition-colors">
-            {member.name || member.full_name || member.email}
-          </h3>
-          
+          <div className="flex items-center gap-2">
+            <h3 className="text-white font-semibold text-lg truncate group-hover:text-blue-300 transition-colors">
+              {member.name || member.full_name || member.email}
+            </h3>
+            {member.is_team_leader && (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold border border-blue-300">Leader</span>
+            )}
+          </div>
           {member.team_name && (
             <div className="flex items-center gap-1.5 mt-1">
               <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
@@ -38,9 +42,10 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({ member, formatDate }) =
         <div className="space-y-1.5 text-sm">
           <div className="flex items-center gap-2">
             <Building size={12} className="text-blue-400 flex-shrink-0" />
-            <span className="text-gray-300 truncate">{member.project_name}</span>
+            {member.project_name && (
+              <span className="text-gray-300 truncate">{member.project_name}</span>
+            )}
           </div>
-
           {member.team_code && (
             <div className="flex items-center gap-2">
               <Hash size={12} className="text-orange-400 flex-shrink-0" />

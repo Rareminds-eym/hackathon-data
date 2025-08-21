@@ -160,9 +160,18 @@ const ViewTeamMembersTab: React.FC<ViewTeamMembersTabProps> = ({ projectCount })
 
   const handleExportTeamMembers = async () => {
     try {
+      // Ensure project value matches backend expectation (case and whitespace)
+      let exportProject = undefined;
+      if (selectedProject !== 'all') {
+        // Find the exact project name from availableProjects (case-sensitive match)
+        const exactProject = availableProjects.find(
+          (p) => p.trim() === selectedProject.trim()
+        );
+        exportProject = exactProject || selectedProject.trim();
+      }
       await apiService.exportTeamMembers({
         search: debouncedSearch || undefined,
-        project: selectedProject === 'all' ? undefined : selectedProject,
+        project: exportProject,
         sortBy,
         sortOrder,
       });

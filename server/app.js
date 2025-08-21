@@ -562,15 +562,22 @@ app.post('/export-team-members', async (req, res) => {
       }
     }
 
-    // Apply search filter
+
+    // Apply search filter (match UI logic: full_name, email, team_code, join_code, team_name, project_name)
     if (search) {
       const searchLower = search.toLowerCase();
       allTeamMembers = allTeamMembers.filter(member => {
-        return (
-          (member.name && member.name.toLowerCase().includes(searchLower)) ||
-          (member.email && member.email.toLowerCase().includes(searchLower)) ||
-          (member.team_code && member.team_code.toLowerCase().includes(searchLower)) ||
-          (member.team_name && member.team_name.toLowerCase().includes(searchLower))
+        const searchableFields = [
+          member.name || '',
+          member.full_name || '',
+          member.email || '',
+          member.team_code || '',
+          member.join_code || '',
+          member.team_name || '',
+          member.project_name || ''
+        ];
+        return searchableFields.some(field =>
+          field.toLowerCase().includes(searchLower)
         );
       });
     }
