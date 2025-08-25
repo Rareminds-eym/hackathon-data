@@ -1,10 +1,11 @@
 import React from 'react';
-import { Database, AlertCircle, Wifi, WifiOff, LogOut, Activity, Zap, Menu, X, Users } from 'lucide-react';
+import { Database, AlertCircle, Wifi, WifiOff, LogOut, Activity, Zap, Menu, X, Users, FileBarChart2 } from 'lucide-react';
 import ProjectForm, { ProjectConfig } from '../components/ProjectForm';
 import ProjectsTab from '../components/ProjectsTab';
 import ExportTab from '../components/ExportTab';
 import InstructionsTab from '../components/InstructionsTab';
 import ViewTeamMembersTab from '../components/ViewTeamMembersTab';
+import Level2DataTab from '../components/Level2DataTab';
 
 interface DashboardScreenProps {
   projects: any[];
@@ -29,7 +30,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   setError,
   logout,
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'instructions' | 'team-members'>('export');
+  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'instructions' | 'team-members' | 'level2-data'>('export');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   return (
@@ -83,7 +84,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {/* Mobile Navigation Tabs */}
       <div className="md:hidden backdrop-blur-xl bg-white/5 border-b border-white/10 sticky top-16 z-20">
-        <div className="grid grid-cols-4 gap-0">
+        <div className="grid grid-cols-5 gap-0">
           <button
             className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
               activeTab === 'export' ? 'bg-white/10 text-purple-400 border-b-2 border-purple-400' : 'text-white hover:bg-white/5'
@@ -110,6 +111,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           >
             <Users size={16} />
             <span>Teams</span>
+          </button>
+          <button
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
+              activeTab === 'level2-data' ? 'bg-white/10 text-purple-400 border-b-2 border-purple-400' : 'text-white hover:bg-white/5'
+            }`}
+            onClick={() => setActiveTab('level2-data')}
+          >
+            <FileBarChart2 size={16} />
+            <span>L2 Data</span>
           </button>
           <button
             className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
@@ -188,6 +198,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </button>
               <button
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
+                  activeTab === 'level2-data' ? 'bg-white/10 text-purple-400' : 'text-white hover:bg-white/10'
+                }`}
+                onClick={() => setActiveTab('level2-data')}
+              >
+                <FileBarChart2 size={18} />
+                <span>Level 2 Data</span>
+              </button>
+              <button
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
                   activeTab === 'instructions' ? 'bg-white/10 text-pink-400' : 'text-white hover:bg-white/10'
                 }`}
                 onClick={() => setActiveTab('instructions')}
@@ -259,6 +278,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 projectCount={projects.length}
               />
             )}
+            {activeTab === 'level2-data' && (
+              <Level2DataTab
+                projectCount={projects.length}
+              />
+            )}
             {activeTab === 'instructions' && <InstructionsTab />}
           </main>
         </div>
@@ -282,6 +306,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         )}
         {activeTab === 'team-members' && (
           <ViewTeamMembersTab
+            projectCount={projects.length}
+          />
+        )}
+        {activeTab === 'level2-data' && (
+          <Level2DataTab
             projectCount={projects.length}
           />
         )}
