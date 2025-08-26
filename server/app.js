@@ -234,27 +234,45 @@ app.post('/export', async (req, res) => {
         // Export each required table
         for (const tableName of REQUIRED_TABLES) {
           try {
-            const result = await client.query(`SELECT * FROM ${tableName}`);
+            // Use explicit column selection to ensure proper data retrieval
+            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC`);
 
             if (result.rows.length > 0) {
               const fileName = `${project.name}_${tableName}.csv`;
               const filePath = path.join(tempDir, fileName);
 
-              // Get column names
-              const columns = Object.keys(result.rows[0]).map(key => ({
+              // Get all unique column names from all rows to handle sparse data
+              const allColumns = new Set();
+              result.rows.forEach(row => {
+                Object.keys(row).forEach(key => allColumns.add(key));
+              });
+              
+              const columns = Array.from(allColumns).sort().map(key => ({
                 id: key,
                 title: key
               }));
 
-              // Stringify object/array/JSON fields for CSV output
+              // Process rows with proper null/undefined handling
               const rows = result.rows.map(row => {
                 const newRow = {};
+                // Initialize all columns to ensure consistent structure
+                allColumns.forEach(col => {
+                  newRow[col] = '';
+                });
+                
+                // Fill in actual data
                 for (const key of Object.keys(row)) {
                   const value = row[key];
-                  if (value && typeof value === 'object') {
+                  if (value === null || value === undefined) {
+                    newRow[key] = '';
+                  } else if (typeof value === 'object') {
                     newRow[key] = JSON.stringify(value);
+                  } else if (typeof value === 'boolean') {
+                    newRow[key] = value.toString();
+                  } else if (typeof value === 'number') {
+                    newRow[key] = value.toString();
                   } else {
-                    newRow[key] = value;
+                    newRow[key] = String(value);
                   }
                 }
                 return newRow;
@@ -393,27 +411,45 @@ app.post('/export-hl2', async (req, res) => {
         // Export each HL2 table
         for (const tableName of HL2_TABLES) {
           try {
-            const result = await client.query(`SELECT * FROM ${tableName}`);
+            // Use explicit column selection to ensure proper data retrieval
+            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC`);
 
             if (result.rows.length > 0) {
               const fileName = `${project.name}_${tableName}.csv`;
               const filePath = path.join(tempDir, fileName);
 
-              // Get column names
-              const columns = Object.keys(result.rows[0]).map(key => ({
+              // Get all unique column names from all rows to handle sparse data
+              const allColumns = new Set();
+              result.rows.forEach(row => {
+                Object.keys(row).forEach(key => allColumns.add(key));
+              });
+              
+              const columns = Array.from(allColumns).sort().map(key => ({
                 id: key,
                 title: key
               }));
 
-              // Stringify object/array/JSON fields for CSV output
+              // Process rows with proper null/undefined handling
               const rows = result.rows.map(row => {
                 const newRow = {};
+                // Initialize all columns to ensure consistent structure
+                allColumns.forEach(col => {
+                  newRow[col] = '';
+                });
+                
+                // Fill in actual data
                 for (const key of Object.keys(row)) {
                   const value = row[key];
-                  if (value && typeof value === 'object') {
+                  if (value === null || value === undefined) {
+                    newRow[key] = '';
+                  } else if (typeof value === 'object') {
                     newRow[key] = JSON.stringify(value);
+                  } else if (typeof value === 'boolean') {
+                    newRow[key] = value.toString();
+                  } else if (typeof value === 'number') {
+                    newRow[key] = value.toString();
                   } else {
-                    newRow[key] = value;
+                    newRow[key] = String(value);
                   }
                 }
                 return newRow;
@@ -578,15 +614,15 @@ app.get('/team-members', async (req, res) => {
           let orderByClause = '';
           const validSortColumns = ['name', 'email', 'role', 'created_at', 'updated_at'];
           if (validSortColumns.includes(sortBy)) {
-            orderByClause = `ORDER BY ${sortBy} ${sortOrder}`;
+            orderByClause = `ORDER BY "${sortBy}" ${sortOrder} NULLS LAST`;
           } else if (sortBy === 'team_code') {
             // For team_code, we'll sort after processing since it's computed
-            orderByClause = 'ORDER BY created_at DESC';
+            orderByClause = 'ORDER BY "created_at" DESC NULLS LAST';
           } else {
-            orderByClause = 'ORDER BY created_at DESC';
+            orderByClause = 'ORDER BY "created_at" DESC NULLS LAST';
           }
 
-          const result = await client.query(`SELECT * FROM teams ${orderByClause}`);
+          const result = await client.query(`SELECT * FROM "teams" ${orderByClause}`);
           
           // Add project name and extract team_code to each team member
           const projectMembers = result.rows.map(member => {
@@ -705,14 +741,16 @@ app.post('/export-team-members', async (req, res) => {
           )`
         );
         if (tableExists.rows[0].exists) {
-          const result = await client.query('SELECT * FROM teams');
+          const result = await client.query('SELECT * FROM "teams" ORDER BY "created_at" DESC NULLS LAST');
           // Add project name and extract team_code to each team member
           const projectMembers = result.rows.map(member => {
-            const extractedTeamCode = member.team_code || (member.email ? extractTeamCodeFromEmail(member.email) : '');
+            // Use join_code as the main team code, fallback to team_code, then extract from email
+            const extractedTeamCode = member.join_code || member.team_code || (member.email ? extractTeamCodeFromEmail(member.email) : '');
             return {
               ...member,
               project_name: proj.name,
-              team_code: extractedTeamCode
+              team_code: extractedTeamCode,
+              team_name: member.team_name || member.teamname || ''
             };
           });
           allTeamMembers.push(...projectMembers);
@@ -767,16 +805,17 @@ app.post('/export-team-members', async (req, res) => {
     const filePath = path.join(tempDir, fileName);
 
     // Get all possible column names from all team members
-    const allColumns = new Set(['project_name']);
+    const allColumns = new Set();
     allTeamMembers.forEach(member => {
       Object.keys(member).forEach(key => {
-        if (key !== 'project_name') {
-          allColumns.add(key);
-        }
+        allColumns.add(key);
       });
     });
 
-    const columns = Array.from(allColumns).map(key => ({
+    // Ensure project_name is first column
+    const sortedColumns = ['project_name', ...Array.from(allColumns).filter(col => col !== 'project_name').sort()];
+    
+    const columns = sortedColumns.map(key => ({
       id: key,
       title: key
     }));
@@ -784,12 +823,24 @@ app.post('/export-team-members', async (req, res) => {
     // Stringify object/array/JSON fields for CSV output
     const rows = allTeamMembers.map(member => {
       const newRow = {};
-      allColumns.forEach(key => {
+      // Initialize all columns to ensure consistent structure
+      sortedColumns.forEach(key => {
+        newRow[key] = '';
+      });
+      
+      // Fill in actual data
+      Object.keys(member).forEach(key => {
         const value = member[key];
-        if (value && typeof value === 'object') {
+        if (value === null || value === undefined) {
+          newRow[key] = '';
+        } else if (typeof value === 'object') {
           newRow[key] = JSON.stringify(value);
+        } else if (typeof value === 'boolean') {
+          newRow[key] = value.toString();
+        } else if (typeof value === 'number') {
+          newRow[key] = value.toString();
         } else {
-          newRow[key] = value || '';
+          newRow[key] = String(value);
         }
       });
       return newRow;
