@@ -121,6 +121,35 @@ class ApiService {
     window.URL.revokeObjectURL(url);
   }
 
+  async exportHL2Tables(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/export-hl2`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      // Try to parse error as JSON, otherwise fallback to text
+      let errorMsg = 'Failed to export HL2 tables';
+      try {
+        const error = await response.json();
+        errorMsg = error.error || errorMsg;
+      } catch {
+        errorMsg = await response.text();
+      }
+      throw new Error(errorMsg);
+    }
+
+    // Handle file download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'hl2_exported_tables.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
   async healthCheck(): Promise<{ status: string; projects: number }> {
     const response = await fetch(`${API_BASE_URL}/health`);
     

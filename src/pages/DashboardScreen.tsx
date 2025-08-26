@@ -3,6 +3,7 @@ import { Database, AlertCircle, Wifi, WifiOff, LogOut, Activity, Zap, Menu, X, U
 import ProjectForm, { ProjectConfig } from '../components/ProjectForm';
 import ProjectsTab from '../components/ProjectsTab';
 import ExportTab from '../components/ExportTab';
+import HL2ExportTab from '../components/HL2ExportTab';
 import InstructionsTab from '../components/InstructionsTab';
 import ViewTeamMembersTab from '../components/ViewTeamMembersTab';
 
@@ -14,6 +15,7 @@ interface DashboardScreenProps {
   handleAddProject: (projectConfig: ProjectConfig) => void;
   handleRemoveProject: (id: string) => void;
   handleExport: () => Promise<void>;
+  handleHL2Export: () => Promise<void>;
   setError: (msg: string) => void;
   logout: () => void;
 }
@@ -26,10 +28,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   handleAddProject,
   handleRemoveProject,
   handleExport,
+  handleHL2Export,
   setError,
   logout,
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'instructions' | 'team-members'>('export');
+  const [activeTab, setActiveTab] = React.useState<'projects' | 'export' | 'hl2-export' | 'instructions' | 'team-members'>('export');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   return (
@@ -83,7 +86,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {/* Mobile Navigation Tabs */}
       <div className="md:hidden backdrop-blur-xl bg-white/5 border-b border-white/10 sticky top-16 z-20">
-        <div className="grid grid-cols-4 gap-0">
+        <div className="grid grid-cols-5 gap-0">
           <button
             className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
               activeTab === 'export' ? 'bg-white/10 text-purple-400 border-b-2 border-purple-400' : 'text-white hover:bg-white/5'
@@ -92,6 +95,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           >
             <Zap size={16} />
             <span>Export</span>
+          </button>
+          <button
+            className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
+              activeTab === 'hl2-export' ? 'bg-white/10 text-teal-400 border-b-2 border-teal-400' : 'text-white hover:bg-white/5'
+            }`}
+            onClick={() => setActiveTab('hl2-export')}
+          >
+            <Zap size={16} />
+            <span>HL2</span>
           </button>
           <button
             className={`flex flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium transition-all ${
@@ -167,6 +179,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               >
                 <Zap size={18} />
                 <span>Export</span>
+              </button>
+              <button
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
+                  activeTab === 'hl2-export' ? 'bg-white/10 text-teal-400' : 'text-white hover:bg-white/10'
+                }`}
+                onClick={() => setActiveTab('hl2-export')}
+              >
+                <Zap size={18} />
+                <span>HL2 Export</span>
               </button>
               <button
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-left ${
@@ -254,6 +275,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 onExport={handleExport}
               />
             )}
+            {activeTab === 'hl2-export' && (
+              <HL2ExportTab
+                projectCount={projects.length}
+                onExport={handleHL2Export}
+              />
+            )}
             {activeTab === 'team-members' && (
               <ViewTeamMembersTab
                 projectCount={projects.length}
@@ -278,6 +305,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <ExportTab
             projectCount={projects.length}
             onExport={handleExport}
+          />
+        )}
+        {activeTab === 'hl2-export' && (
+          <HL2ExportTab
+            projectCount={projects.length}
+            onExport={handleHL2Export}
           />
         )}
         {activeTab === 'team-members' && (

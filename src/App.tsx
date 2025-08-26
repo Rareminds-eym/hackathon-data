@@ -68,6 +68,10 @@ function App() {
     await apiService.exportTables();
   };
 
+  const handleHL2Export = async () => {
+    await apiService.exportHL2Tables();
+  };
+
   return (
     <BrowserRouter>
       <Routes>
@@ -87,6 +91,7 @@ function App() {
                 handleAddProject={handleAddProject}
                 handleRemoveProject={handleRemoveProject}
                 handleExport={handleExport}
+                handleHL2Export={handleHL2Export}
                 setError={setError}
                 logout={logout}
               />

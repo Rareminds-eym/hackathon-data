@@ -54,6 +54,9 @@ let projects = [
 // Required tables to export
 const REQUIRED_TABLES = ['individual_attempts', 'attempt_details', 'teams'];
 
+// HL2 tables to export
+const HL2_TABLES = ['hl2_progress', 'selected_cases', 'selected_solution', 'level2_screen3_progress'];
+
 // Utility function to extract team_code from email
 function extractTeamCodeFromEmail(email) {
   if (!email) return '';
@@ -356,6 +359,165 @@ app.post('/export', async (req, res) => {
   } catch (error) {
     console.error('Export error:', error);
     res.status(500).json({ error: 'Export failed: ' + error.message });
+  }
+});
+
+// Export HL2 tables as ZIP
+app.post('/export-hl2', async (req, res) => {
+  try {
+    if (projects.length === 0) {
+      return res.status(400).json({ error: 'No projects configured' });
+    }
+
+    // Create temporary directory for CSV files
+    const tempDir = path.join(__dirname, 'temp', uuidv4());
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const exportResults = [];
+
+    // Export data from each project
+    for (const project of projects) {
+      const pool = new Pool({
+        host: project.host,
+        database: project.database,
+        user: project.username,
+        password: project.password,
+        port: project.port,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+      });
+
+      try {
+        const client = await pool.connect();
+
+        // Export each HL2 table
+        for (const tableName of HL2_TABLES) {
+          try {
+            const result = await client.query(`SELECT * FROM ${tableName}`);
+
+            if (result.rows.length > 0) {
+              const fileName = `${project.name}_${tableName}.csv`;
+              const filePath = path.join(tempDir, fileName);
+
+              // Get column names
+              const columns = Object.keys(result.rows[0]).map(key => ({
+                id: key,
+                title: key
+              }));
+
+              // Stringify object/array/JSON fields for CSV output
+              const rows = result.rows.map(row => {
+                const newRow = {};
+                for (const key of Object.keys(row)) {
+                  const value = row[key];
+                  if (value && typeof value === 'object') {
+                    newRow[key] = JSON.stringify(value);
+                  } else {
+                    newRow[key] = value;
+                  }
+                }
+                return newRow;
+              });
+
+              // Create CSV writer
+              const csvWriter = createCsvWriter({
+                path: filePath,
+                header: columns
+              });
+
+              // Write data to CSV
+              await csvWriter.writeRecords(rows);
+
+              exportResults.push({
+                project: project.name,
+                table: tableName,
+                fileName,
+                rowCount: result.rows.length,
+                status: 'success'
+              });
+            } else {
+              exportResults.push({
+                project: project.name,
+                table: tableName,
+                fileName: null,
+                rowCount: 0,
+                status: 'empty'
+              });
+            }
+          } catch (tableError) {
+            console.error(`Error exporting ${tableName} from ${project.name}:`, tableError);
+            exportResults.push({
+              project: project.name,
+              table: tableName,
+              fileName: null,
+              rowCount: 0,
+              status: 'error',
+              error: tableError.message
+            });
+          }
+        }
+
+        client.release();
+        await pool.end();
+
+      } catch (projectError) {
+        console.error(`Error connecting to project ${project.name}:`, projectError);
+        HL2_TABLES.forEach(tableName => {
+          exportResults.push({
+            project: project.name,
+            table: tableName,
+            fileName: null,
+            rowCount: 0,
+            status: 'error',
+            error: projectError.message
+          });
+        });
+      }
+    }
+
+    // Create ZIP file
+    const zipFileName = `hl2_export_${new Date().toISOString().split('T')[0]}.zip`;
+    const zipPath = path.join(tempDir, zipFileName);
+
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.pipe(output);
+
+    // Add CSV files to ZIP
+    const csvFiles = fs.readdirSync(tempDir).filter(file => file.endsWith('.csv'));
+    csvFiles.forEach(file => {
+      archive.file(path.join(tempDir, file), { name: file });
+    });
+
+    await archive.finalize();
+
+    // Wait for ZIP to be created
+    await new Promise((resolve) => {
+      output.on('close', resolve);
+    });
+
+    // Send ZIP file
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
+    
+    const zipStream = fs.createReadStream(zipPath);
+    zipStream.pipe(res);
+
+    // Clean up temp directory after sending
+    zipStream.on('end', () => {
+      setTimeout(() => {
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.error('Error cleaning up temp directory:', cleanupError);
+        }
+      }, 1000);
+    });
+
+  } catch (error) {
+    console.error('HL2 Export error:', error);
+    res.status(500).json({ error: 'HL2 Export failed: ' + error.message });
   }
 });
 
