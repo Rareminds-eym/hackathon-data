@@ -103,6 +103,10 @@ class ApiService {
       try {
         const error = await response.json();
         errorMsg = error.error || errorMsg;
+        // Log additional details if available
+        if (error.details) {
+          console.error('Export details:', error.details);
+        }
       } catch {
         errorMsg = await response.text();
       }
@@ -111,10 +115,16 @@ class ApiService {
 
     // Handle file download
     const blob = await response.blob();
+    
+    // Check if blob is empty
+    if (blob.size === 0) {
+      throw new Error('Export returned empty file. Please check if tables contain data.');
+    }
+    
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'exported_tables.zip';
+    link.download = `supabase_export_${new Date().toISOString().split('T')[0]}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -132,6 +142,10 @@ class ApiService {
       try {
         const error = await response.json();
         errorMsg = error.error || errorMsg;
+        // Log additional details if available
+        if (error.details) {
+          console.error('HL2 Export details:', error.details);
+        }
       } catch {
         errorMsg = await response.text();
       }
@@ -140,10 +154,16 @@ class ApiService {
 
     // Handle file download
     const blob = await response.blob();
+    
+    // Check if blob is empty
+    if (blob.size === 0) {
+      throw new Error('HL2 Export returned empty file. Please check if tables contain data.');
+    }
+    
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'hl2_exported_tables.zip';
+    link.download = `hl2_export_${new Date().toISOString().split('T')[0]}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

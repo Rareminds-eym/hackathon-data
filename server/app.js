@@ -218,6 +218,7 @@ app.post('/export', async (req, res) => {
 
     // Export data from each project
     for (const project of projects) {
+      console.log(`Starting export for project: ${project.name}`);
       const pool = new Pool({
         host: project.host,
         database: project.database,
@@ -226,16 +227,45 @@ app.post('/export', async (req, res) => {
         port: project.port,
         ssl: { rejectUnauthorized: false },
         connectionTimeoutMillis: 10000,
+        max: 1, // Limit concurrent connections
+        idleTimeoutMillis: 30000,
       });
 
       try {
         const client = await pool.connect();
+        console.log(`Connected to project: ${project.name}`);
 
         // Export each required table
         for (const tableName of REQUIRED_TABLES) {
           try {
+            console.log(`Exporting table: ${tableName} from project: ${project.name}`);
+            
+            // Check if table exists first
+            const tableExists = await client.query(
+              `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = $1
+              )`,
+              [tableName]
+            );
+            
+            if (!tableExists.rows[0].exists) {
+              console.log(`Table ${tableName} does not exist in project ${project.name}`);
+              exportResults.push({
+                project: project.name,
+                table: tableName,
+                fileName: null,
+                rowCount: 0,
+                status: 'missing',
+                error: 'Table does not exist'
+              });
+              continue;
+            }
+            
             // Use explicit column selection to ensure proper data retrieval
-            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC`);
+            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC NULLS LAST`);
+            console.log(`Found ${result.rows.length} rows in ${tableName} from ${project.name}`);
 
             if (result.rows.length > 0) {
               const fileName = `${project.name}_${tableName}.csv`;
@@ -266,7 +296,11 @@ app.post('/export', async (req, res) => {
                   if (value === null || value === undefined) {
                     newRow[key] = '';
                   } else if (typeof value === 'object') {
-                    newRow[key] = JSON.stringify(value);
+                    try {
+                      newRow[key] = JSON.stringify(value);
+                    } catch (e) {
+                      newRow[key] = String(value);
+                    }
                   } else if (typeof value === 'boolean') {
                     newRow[key] = value.toString();
                   } else if (typeof value === 'number') {
@@ -286,6 +320,7 @@ app.post('/export', async (req, res) => {
 
               // Write data to CSV
               await csvWriter.writeRecords(rows);
+              console.log(`Successfully exported ${rows.length} rows to ${fileName}`);
 
               exportResults.push({
                 project: project.name,
@@ -295,6 +330,7 @@ app.post('/export', async (req, res) => {
                 status: 'success'
               });
             } else {
+              console.log(`Table ${tableName} in project ${project.name} is empty`);
               exportResults.push({
                 project: project.name,
                 table: tableName,
@@ -317,7 +353,7 @@ app.post('/export', async (req, res) => {
         }
 
         client.release();
-        await pool.end();
+        console.log(`Finished exporting from project: ${project.name}`);
 
       } catch (projectError) {
         console.error(`Error connecting to project ${project.name}:`, projectError);
@@ -331,9 +367,18 @@ app.post('/export', async (req, res) => {
             error: projectError.message
           });
         });
+      } finally {
+        // Ensure pool is closed
+        try {
+          await pool.end();
+        } catch (e) {
+          console.error(`Error closing pool for ${project.name}:`, e);
+        }
       }
     }
 
+    console.log('Export results:', exportResults);
+    
     // Create ZIP file
     const zipFileName = `supabase_export_${new Date().toISOString().split('T')[0]}.zip`;
     const zipPath = path.join(tempDir, zipFileName);
@@ -345,6 +390,21 @@ app.post('/export', async (req, res) => {
 
     // Add CSV files to ZIP
     const csvFiles = fs.readdirSync(tempDir).filter(file => file.endsWith('.csv'));
+    console.log(`Found ${csvFiles.length} CSV files to add to ZIP:`, csvFiles);
+    
+    if (csvFiles.length === 0) {
+      // Clean up and return error if no files were created
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error('Error cleaning up temp directory:', cleanupError);
+      }
+      return res.status(400).json({ 
+        error: 'No data was exported. Please check if the required tables exist and contain data.',
+        details: exportResults
+      });
+    }
+    
     csvFiles.forEach(file => {
       archive.file(path.join(tempDir, file), { name: file });
     });
@@ -356,6 +416,8 @@ app.post('/export', async (req, res) => {
       output.on('close', resolve);
     });
 
+    console.log(`ZIP file created: ${zipFileName}, size: ${archive.pointer()} bytes`);
+    
     // Send ZIP file
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
@@ -368,6 +430,7 @@ app.post('/export', async (req, res) => {
       setTimeout(() => {
         try {
           fs.rmSync(tempDir, { recursive: true, force: true });
+          console.log(`Cleaned up temp directory: ${tempDir}`);
         } catch (cleanupError) {
           console.error('Error cleaning up temp directory:', cleanupError);
         }
@@ -395,6 +458,7 @@ app.post('/export-hl2', async (req, res) => {
 
     // Export data from each project
     for (const project of projects) {
+      console.log(`Starting HL2 export for project: ${project.name}`);
       const pool = new Pool({
         host: project.host,
         database: project.database,
@@ -403,16 +467,45 @@ app.post('/export-hl2', async (req, res) => {
         port: project.port,
         ssl: { rejectUnauthorized: false },
         connectionTimeoutMillis: 10000,
+        max: 1, // Limit concurrent connections
+        idleTimeoutMillis: 30000,
       });
 
       try {
         const client = await pool.connect();
+        console.log(`Connected to project for HL2: ${project.name}`);
 
         // Export each HL2 table
         for (const tableName of HL2_TABLES) {
           try {
+            console.log(`Exporting HL2 table: ${tableName} from project: ${project.name}`);
+            
+            // Check if table exists first
+            const tableExists = await client.query(
+              `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = $1
+              )`,
+              [tableName]
+            );
+            
+            if (!tableExists.rows[0].exists) {
+              console.log(`HL2 Table ${tableName} does not exist in project ${project.name}`);
+              exportResults.push({
+                project: project.name,
+                table: tableName,
+                fileName: null,
+                rowCount: 0,
+                status: 'missing',
+                error: 'Table does not exist'
+              });
+              continue;
+            }
+            
             // Use explicit column selection to ensure proper data retrieval
-            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC`);
+            const result = await client.query(`SELECT * FROM "${tableName}" ORDER BY created_at DESC NULLS LAST`);
+            console.log(`Found ${result.rows.length} rows in HL2 table ${tableName} from ${project.name}`);
 
             if (result.rows.length > 0) {
               const fileName = `${project.name}_${tableName}.csv`;
@@ -443,7 +536,11 @@ app.post('/export-hl2', async (req, res) => {
                   if (value === null || value === undefined) {
                     newRow[key] = '';
                   } else if (typeof value === 'object') {
-                    newRow[key] = JSON.stringify(value);
+                    try {
+                      newRow[key] = JSON.stringify(value);
+                    } catch (e) {
+                      newRow[key] = String(value);
+                    }
                   } else if (typeof value === 'boolean') {
                     newRow[key] = value.toString();
                   } else if (typeof value === 'number') {
@@ -463,6 +560,7 @@ app.post('/export-hl2', async (req, res) => {
 
               // Write data to CSV
               await csvWriter.writeRecords(rows);
+              console.log(`Successfully exported ${rows.length} rows to HL2 ${fileName}`);
 
               exportResults.push({
                 project: project.name,
@@ -472,6 +570,7 @@ app.post('/export-hl2', async (req, res) => {
                 status: 'success'
               });
             } else {
+              console.log(`HL2 Table ${tableName} in project ${project.name} is empty`);
               exportResults.push({
                 project: project.name,
                 table: tableName,
@@ -494,7 +593,7 @@ app.post('/export-hl2', async (req, res) => {
         }
 
         client.release();
-        await pool.end();
+        console.log(`Finished HL2 exporting from project: ${project.name}`);
 
       } catch (projectError) {
         console.error(`Error connecting to project ${project.name}:`, projectError);
@@ -508,9 +607,18 @@ app.post('/export-hl2', async (req, res) => {
             error: projectError.message
           });
         });
+      } finally {
+        // Ensure pool is closed
+        try {
+          await pool.end();
+        } catch (e) {
+          console.error(`Error closing HL2 pool for ${project.name}:`, e);
+        }
       }
     }
 
+    console.log('HL2 Export results:', exportResults);
+    
     // Create ZIP file
     const zipFileName = `hl2_export_${new Date().toISOString().split('T')[0]}.zip`;
     const zipPath = path.join(tempDir, zipFileName);
@@ -522,6 +630,21 @@ app.post('/export-hl2', async (req, res) => {
 
     // Add CSV files to ZIP
     const csvFiles = fs.readdirSync(tempDir).filter(file => file.endsWith('.csv'));
+    console.log(`Found ${csvFiles.length} HL2 CSV files to add to ZIP:`, csvFiles);
+    
+    if (csvFiles.length === 0) {
+      // Clean up and return error if no files were created
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error('Error cleaning up temp directory:', cleanupError);
+      }
+      return res.status(400).json({ 
+        error: 'No HL2 data was exported. Please check if the required tables exist and contain data.',
+        details: exportResults
+      });
+    }
+    
     csvFiles.forEach(file => {
       archive.file(path.join(tempDir, file), { name: file });
     });
@@ -533,6 +656,8 @@ app.post('/export-hl2', async (req, res) => {
       output.on('close', resolve);
     });
 
+    console.log(`HL2 ZIP file created: ${zipFileName}, size: ${archive.pointer()} bytes`);
+    
     // Send ZIP file
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
@@ -545,6 +670,7 @@ app.post('/export-hl2', async (req, res) => {
       setTimeout(() => {
         try {
           fs.rmSync(tempDir, { recursive: true, force: true });
+          console.log(`Cleaned up HL2 temp directory: ${tempDir}`);
         } catch (cleanupError) {
           console.error('Error cleaning up temp directory:', cleanupError);
         }
@@ -587,6 +713,7 @@ app.get('/team-members', async (req, res) => {
         continue;
       }
 
+      console.log(`Fetching team members from project: ${projectConfig.name}`);
       const pool = new Pool({
         host: projectConfig.host,
         database: projectConfig.database,
@@ -595,10 +722,13 @@ app.get('/team-members', async (req, res) => {
         port: projectConfig.port,
         ssl: { rejectUnauthorized: false },
         connectionTimeoutMillis: 10000,
+        max: 1, // Limit concurrent connections
+        idleTimeoutMillis: 30000,
       });
 
       try {
         const client = await pool.connect();
+        console.log(`Connected to project for team members: ${projectConfig.name}`);
         
         // Check if teams table exists
         const tableExists = await client.query(
@@ -623,6 +753,7 @@ app.get('/team-members', async (req, res) => {
           }
 
           const result = await client.query(`SELECT * FROM "teams" ${orderByClause}`);
+          console.log(`Found ${result.rows.length} team members in project ${projectConfig.name}`);
           
           // Add project name and extract team_code to each team member
           const projectMembers = result.rows.map(member => {
@@ -637,17 +768,27 @@ app.get('/team-members', async (req, res) => {
           });
           
           allTeamMembers.push(...projectMembers);
+        } else {
+          console.log(`Teams table does not exist in project ${projectConfig.name}`);
         }
 
         client.release();
-        await pool.end();
 
       } catch (projectError) {
         console.error(`Error fetching team members from ${projectConfig.name}:`, projectError);
         // Continue with other projects even if one fails
+      } finally {
+        // Ensure pool is closed
+        try {
+          await pool.end();
+        } catch (e) {
+          console.error(`Error closing team members pool for ${projectConfig.name}:`, e);
+        }
       }
     }
 
+    console.log(`Total team members found across all projects: ${allTeamMembers.length}`);
+    
     // Apply search filtering
     let filteredMembers = allTeamMembers;
     if (search) {
@@ -689,6 +830,8 @@ app.get('/team-members', async (req, res) => {
     const offset = (page - 1) * limit;
     const paginatedMembers = filteredMembers.slice(offset, offset + limit);
 
+    console.log(`Returning ${paginatedMembers.length} team members (page ${page} of ${totalPages})`);
+    
     res.json({
       data: paginatedMembers,
       total,
